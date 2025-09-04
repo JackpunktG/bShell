@@ -211,13 +211,76 @@ void loadRecipe(char *search)
     }
 }
 
+void newBday()
+{
+    bool correct = false;
+    char name[50] = {0};
+    int date = 0, month = 0;
+
+    while (!correct)
+    {
+        printf("\n<name> - <day.monthDigit>\n");
+        char *bday = NULL;
+        size_t len = 0;
+
+        getline(&bday, &len, stdin);
+
+        char *token = strtok(bday, "-");
+        if (token)
+        {
+            strcpy(name, token);
+            trim(name);
+            token = strtok(NULL, "-");
+            if (token)
+            {
+                trim(token);
+                char *date_st = strtok(token, ".");
+                char *month_st = strtok(NULL, ".");
+
+                if (date_st && month_st)
+                {
+                    date = atoi(date_st);
+                    month = atoi(month_st);
+                    printf("%s - %d.%d\nRichtig? (y/n)\n", name, date, month);
+                    char option;
+                    scanf(" %c", &option);
+                    getchar();
+                    if (option == 'y' || option == 'Y')
+                        correct = true;
+                }
+                else
+                {
+                    printf("Error...\nInput again\n");
+                }
+            }
+            else
+            {
+                printf("Error...\nInput again\n");
+            }
+        }
+        else
+        {
+            printf("Error...\nInput again\n");
+        }
+    }
+
+    FILE *file = fopen("bdays.csv", "a");
+    if (!file)
+    {
+        printf("Could not open file for appending!\n");
+        return;
+    }
+    fprintf(file, "%d,%d,%s\n", date, month, name);
+    fclose(file);
+}
+
 int main()
 {
     printf("**** Welcome to your cookbook ****");
 
     while (1)
     {
-        printf("\nOptions:\n1 - Input\n2 - Search\n5 - exit\n");
+        printf("\nOptions:\n1 - InputRecipe\n2 - SearchRecipe\n3 - InputBday\n5 - exit\n");
         int option;
 
         scanf("%d", &option);
@@ -235,6 +298,8 @@ int main()
             getline(&nameSeek, &len, stdin);
             loadRecipe(nameSeek);
         }
+        else if (option == 3)
+            newBday();
     }
 
     return 0;
