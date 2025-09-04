@@ -20,6 +20,8 @@ Never miss your grandmas birthday again
 - Search
 - Add
 
+---
+
 ### To come
 
 - edditing functionality
