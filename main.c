@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 
 #define BUFFER 2024
 #define MAX_INGREDIENTS 30
@@ -14,6 +15,13 @@ struct Recipe
     char ingredients[MAX_INGREDIENTS][40];
     char method[1024];
 };
+
+struct Bday
+{
+    char name[50];
+    int day;
+    int month;
+} Bday;
 
 void RecipePrint(struct Recipe r)
 {
@@ -107,7 +115,13 @@ void inputRecipe()
         }
     }
 
-    FILE *file = fopen("data.csv", "a"); // "a" = append mode
+    for (int i = 0; i < 1024; i++)
+    {
+        if (new.method[i] == ',') // changing any ',' that made it into the method.
+            new.method[i] = '.';
+    }
+
+    FILE *file = fopen("recipes.csv", "a");
     if (!file)
     {
         printf("Could not open file for appending!\n");
@@ -127,7 +141,7 @@ void inputRecipe()
 
 void loadRecipe(char *search)
 {
-    FILE *file = fopen("data.csv", "r");
+    FILE *file = fopen("recipes.csv", "r");
     if (file == NULL)
     {
         printf("[ERROR] Could not open file!\n");
@@ -182,7 +196,7 @@ void loadRecipe(char *search)
         }
 
         index++;
-        printf("[INFO] Finished loading recipe %d\n\n", index);
+        // printf("[INFO] Finished loading recipe %d\n\n", index);
     }
 
     fclose(file);
@@ -209,6 +223,131 @@ void loadRecipe(char *search)
                 RecipePrint(recipes[i]);
         }
     }
+}
+
+void deleteRecipe(char *recipeP)
+{
+    char recipe[50];
+    strcpy(recipe, recipeP);
+    trim(recipe);
+    printf("\n%s ??\n\n", recipe);
+    const char *filename = "recipes.csv";
+    const char *tempname = "recipes.csv.temp";
+
+    FILE *file = fopen("recipes.csv", "r");
+    if (file == NULL)
+    {
+        printf("[ERROR] Could not open file!\n");
+        return;
+    }
+
+    // printf("[INFO] Successfully opened file.\n");
+
+    int recipeCount = 0;
+    int ch;
+    while ((ch = fgetc(file)) != EOF)
+    {
+        if (ch == '\n')
+            recipeCount++;
+    }
+    rewind(file);
+
+    struct Recipe recipes[recipeCount];
+    char line[BUFFER];
+    int index = 0;
+    int ingredientCountBuffer[recipeCount];
+
+    while (fgets(line, sizeof(line), file) && index < recipeCount)
+    {
+        trim_newline(line);
+
+        char *token = strtok(line, ",");
+
+        // Uppercase recipe name
+        for (int i = 0; token[i]; i++)
+        {
+            token[i] = toupper(token[i]);
+        }
+        strcpy(recipes[index].name, token);
+
+        token = strtok(NULL, ",");
+        if (token)
+        {
+            strcpy(recipes[index].method, token);
+        }
+        else
+        {
+            strcpy(recipes[index].method, "EMPTY");
+            printf("[WARN] No method found for recipe: %s\n",
+                   recipes[index].name);
+        }
+
+        int n = 0;
+        while ((token = strtok(NULL, ",")) != NULL && n < MAX_INGREDIENTS)
+        {
+            strcpy(recipes[index].ingredients[n], token);
+            n++;
+        }
+        ingredientCountBuffer[index] = n;
+
+        index++;
+        // printf("[INFO] Finished loading recipe %d\n\n", index);
+    }
+
+    fclose(file);
+
+    FILE *newFile = fopen(tempname, "w");
+    if (!newFile)
+    {
+        perror("fopen temp");
+        return;
+    }
+    int check = 0;
+    for (int i = 0; i < recipeCount; i++)
+    {
+
+        if (strcasecmp(recipe, recipes[i].name) == 0)
+        {
+            check++;
+        }
+        else
+        {
+            fprintf(newFile, "%s,%s,", recipes[i].name, recipes[i].method);
+            for (int j = 0; j < ingredientCountBuffer[i]; j++)
+            {
+                fprintf(newFile, "%s", recipes[i].ingredients[j]);
+                if (j < ingredientCountBuffer[i] - 1)
+                    fprintf(newFile, ",");
+            }
+            fprintf(newFile, "\n");
+        }
+    }
+    fclose(newFile);
+
+    if (check == 0)
+    {
+        printf("ERROR - recipes found with name: %s\n", recipe);
+        remove(tempname);
+        return;
+    }
+    else if (check > 1)
+    {
+        printf("WARNING - more than one recipe found with name: %s\n", recipe);
+        printf("would you like to continue regardless? (y/n)\n");
+        char option;
+        scanf("%c", &option);
+        getchar();
+        if (option != 'y' || option != 'Y')
+        {
+            remove(tempname);
+            return;
+        }
+    }
+
+    remove(filename);
+    rename(tempname, filename);
+
+    printf("Recipe Removed\n");
 }
 
 void newBday()
@@ -243,7 +382,7 @@ void newBday()
                     month = atoi(month_st);
                     printf("%s - %d.%d\nRichtig? (y/n)\n", name, date, month);
                     char option;
-                    scanf(" %c", &option);
+                    scanf("%c", &option);
                     getchar();
                     if (option == 'y' || option == 'Y')
                         correct = true;
@@ -274,32 +413,193 @@ void newBday()
     fclose(file);
 }
 
+void printBday()
+{
+    FILE *file = fopen("bdays.csv", "r");
+    if (!file)
+    {
+        printf("Could not open file for reading!\n");
+        return;
+    }
+
+    int bdayCount = 0;
+    int ch;
+    while ((ch = fgetc(file)) != EOF)
+    {
+        if (ch == '\n')
+            bdayCount++;
+    }
+    rewind(file);
+
+    struct Bday bdays[bdayCount];
+    memset(bdays, 0, sizeof(bdays));
+    char line[20];
+    int index = 0;
+    while (fgets(line, sizeof(line), file) && index < bdayCount)
+    {
+        char *token = strtok(line, ",");
+
+        bdays[index].day = atoi(token);
+
+        token = strtok(NULL, ",");
+
+        bdays[index].month = atoi(token);
+
+        token = strtok(NULL, ",");
+        trim(token);
+        strcpy(bdays[index].name, token);
+
+        printf("\n%d.%d - %s", bdays[index].day, bdays[index].month, bdays[index].name);
+        index++;
+    }
+    fclose(file);
+    printf("\n");
+}
+
+void deleteBday(char *nameP)
+{
+    char name[50];
+    strcpy(name, nameP);
+    trim(name);
+    // printf("\n%s ??\n\n", name);
+    const char *filename = "bdays.csv";
+    const char *tempname = "bdays.csv.temp";
+
+    FILE *file = fopen(filename, "r");
+    if (!file)
+    {
+        printf("Could not open file for reading!\n");
+        return;
+    }
+
+    int bdayCount = 0;
+    int ch;
+    while ((ch = fgetc(file)) != EOF)
+    {
+        if (ch == '\n')
+            bdayCount++;
+    }
+    rewind(file);
+
+    struct Bday bdays[bdayCount];
+    memset(bdays, 0, sizeof(bdays));
+    char line[20];
+    int index = 0;
+    while (fgets(line, sizeof(line), file) && index < bdayCount)
+    {
+        char *token = strtok(line, ",");
+
+        bdays[index].day = atoi(token);
+
+        token = strtok(NULL, ",");
+
+        bdays[index].month = atoi(token);
+
+        token = strtok(NULL, ",");
+        trim(token);
+        strcpy(bdays[index].name, token);
+
+        index++;
+    }
+    fclose(file);
+
+    FILE *newFile = fopen(tempname, "w");
+    if (!newFile)
+    {
+        perror("fopen temp");
+        return;
+    }
+
+    int check = 0;
+
+    for (int i = 0; i < index; i++)
+    {
+
+        if (strcasecmp(name, bdays[i].name) == 0)
+        {
+            check++;
+        }
+        else
+            fprintf(newFile, "%d,%d,%s\n", bdays[i].day, bdays[i].month, bdays[i].name);
+    }
+    fclose(newFile);
+
+    if (check == 0)
+    {
+        printf("ERROR - noboday found named: %s\n", name);
+        remove(tempname);
+        return;
+    }
+    else if (check > 1)
+    {
+        printf("WARNING - more than one person found with name: %s\n", name);
+        printf("would you like to continue regardless? (y/n)\n");
+        char option;
+        scanf("%c", &option);
+        getchar();
+        if (option != 'y' || option != 'Y')
+        {
+            remove(tempname);
+            return;
+        }
+    }
+
+    remove(filename);
+    rename(tempname, filename);
+
+    printf("Event Removed\n");
+}
+
 int main()
 {
-    printf("**** Welcome to your cookbook ****");
+    printf("**** Welcome to bShell ****");
 
     while (1)
     {
-        printf("\nOptions:\n1 - InputRecipe\n2 - SearchRecipe\n3 - InputBday\n5 - exit\n");
+        printf("\nOptions:\n1 - Search Recipe\n2 - Add Recipe\n3 - Remove Recipe\n4 - Events\n5 - Add Event\n6 - Remove Event\n9 - exit\n");
         int option;
 
         scanf("%d", &option);
         getchar();
 
-        if (option == 5)
+        if (option == 9)
+        {
+            printf("By..byeee :)\n");
             return 0;
+        }
+
         if (option == 1)
-            inputRecipe();
-        else if (option == 2)
         {
             printf("\nWrite 'all' if you want all\nRecipe name: ");
-            char *nameSeek = NULL;
+            char *seek = NULL;
             size_t len = 0;
-            getline(&nameSeek, &len, stdin);
-            loadRecipe(nameSeek);
+            getline(&seek, &len, stdin);
+            loadRecipe(seek);
+        }
+        else if (option == 2)
+        {
+            inputRecipe();
         }
         else if (option == 3)
+        {
+            printf("\nRecipe to delete: ");
+            char *seek = NULL;
+            size_t len = 0;
+            getline(&seek, &len, stdin);
+            deleteRecipe(seek);
+        }
+        else if (option == 4)
+            printBday();
+        else if (option == 5)
             newBday();
+        else if (option == 6)
+        {
+            printf("\nEvent to delete: ");
+            char *seek = NULL;
+            size_t len = 0;
+            getline(&seek, &len, stdin);
+            deleteBday(seek);
+        }
     }
 
     return 0;
