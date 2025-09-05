@@ -5,9 +5,15 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <time.h>
 
 #define BUFFER 2024
 #define MAX_INGREDIENTS 30
+
+time_t t;
+struct tm tm;
+int currentDay;
+int currentMonth;
 
 struct Recipe
 {
@@ -22,6 +28,8 @@ struct Bday
     int day;
     int month;
 } Bday;
+
+bool isInWeek(int day, int month, int range);
 
 void RecipePrint(struct Recipe r)
 {
@@ -413,7 +421,7 @@ void newBday()
     fclose(file);
 }
 
-void printBday()
+void printBday(int option, int range)
 {
     FILE *file = fopen("bdays.csv", "r");
     if (!file)
@@ -449,7 +457,13 @@ void printBday()
         trim(token);
         strcpy(bdays[index].name, token);
 
-        printf("\n%d.%d - %s", bdays[index].day, bdays[index].month, bdays[index].name);
+        if (option == 1)
+            printf("\n%d.%d - %s", bdays[index].day, bdays[index].month, bdays[index].name);
+        else if (option == 2)
+        {
+            if (isInWeek(bdays[index].day, bdays[index].month, range))
+                printf("\n%d.%d - %s", bdays[index].day, bdays[index].month, bdays[index].name);
+        }
         index++;
     }
     fclose(file);
@@ -550,9 +564,84 @@ void deleteBday(char *nameP)
     printf("Event Removed\n");
 }
 
+bool isLeapYear(int year)
+{
+    return (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
+}
+
+int daysInMonth(int month, int year)
+{
+    static const int days[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+    if (month == 2)
+        return isLeapYear(tm.tm_year + 1900) ? 29 : 28;
+    return days[month - 1];
+}
+
+bool isInWeek(int day, int month, int range)
+{
+    int year = tm.tm_year + 1900;
+    int d = currentDay;
+    int m = currentMonth;
+    int r = range;
+
+    while (r >= 0)
+    {
+        if (d == day && m == month)
+            return true;
+        d++;
+        if (d > daysInMonth(m, year))
+        {
+            d = 1;
+            m++;
+            if (m > 12)
+            {
+                m = 1;
+                year++;
+            }
+        }
+        r--;
+    }
+    return false;
+}
+
 int main()
 {
+    t = time(NULL);
+    tm = *localtime(&t);
+    currentDay = tm.tm_mday;
+    currentMonth = tm.tm_mon + 1;
+    int dayOfWeek = tm.tm_wday; // 0=Sunday, 1=Monday, ..., 6=Saturday
+
     printf("**** Welcome to bShell ****");
+    printf("\n\nHappy ");
+    switch (dayOfWeek)
+    {
+    case 0:
+        printf("Sunday - why are you booting me up... chill the fuck out");
+        break;
+    case 1:
+        printf("Monday - Have a cracking start to the week");
+        break;
+    case 2:
+        printf("Tuesday - Now that reall works begins");
+        break;
+    case 3:
+        printf("Wednesday - #Humpday");
+        break;
+    case 4:
+        printf("Thursday - Final push you, got this");
+        break;
+    case 5:
+        printf("T.G.I.Friday");
+        break;
+    case 6:
+        printf("Saturday - Get out and have a cracking weekend");
+        break;
+    default:
+        printf("... Ops I don't know what day it is");
+    }
+    printf("\nEvents coming up soon in:\n");
+    printBday(2, 7);
 
     while (1)
     {
@@ -589,7 +678,7 @@ int main()
             deleteRecipe(seek);
         }
         else if (option == 4)
-            printBday();
+            printBday(1, 0);
         else if (option == 5)
             newBday();
         else if (option == 6)
