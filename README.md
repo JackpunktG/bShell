@@ -4,7 +4,7 @@ Your on stop, shell shop... almost :)
 
 Creating a little shell emulator to get back onto the C train. I'm aboard!!
 
-### Functionality
+## Functionality
 
 Welcome page and giving a list of upcoming important event
 
