@@ -6,6 +6,7 @@
 #include <string.h>
 #include <strings.h>
 #include <time.h>
+#include <sys/types.h>
 
 #define BUFFER 2024
 #define MAX_INGREDIENTS 30
@@ -14,6 +15,8 @@ time_t t;
 struct tm tm;
 int currentDay;
 int currentMonth;
+int userRange;
+char userName[30];
 
 struct Recipe
 {
@@ -30,6 +33,111 @@ struct Bday
 } Bday;
 
 bool isInWeek(int day, int month, int range);
+void trim(char *str);
+
+void setConfig()
+{
+    printf("\n\nFirst time start up Config setting, welcome :)");
+    printf("During the start up you would be greeted with the welcome screen. This will show you your upcoming event.\n\nUsername: ");
+
+    bool correctInput = false;
+
+    while (!correctInput)
+    {
+        char *buffer = NULL;
+        size_t len = 0;
+        ssize_t read;
+        read = getline(&buffer, &len, stdin);
+        if (read != -1)
+        {
+            if (read <= 30)
+            {
+                strcpy(userName, buffer);
+                correctInput = true;
+            }
+            else
+                printf("Username to long\nUsername: ");
+        }
+        else
+            printf("Error entering - Try again\nUsername: ");
+        free(buffer);
+    }
+
+    printf("\n\nOn the welcome page you'll see a list of Events coming up.\nHow many days in the future would you like to be shown? ");
+
+    correctInput = false;
+    while (!correctInput)
+    {
+        scanf("%d", &userRange);
+        getchar();
+        printf("Range: %d\n\nCorrect? (y/n)\n", userRange);
+        int c;
+        c = getchar();
+        getchar();
+        if (c == 'y' || c == 'Y')
+            correctInput = true;
+        if (!correctInput)
+            printf("\nTry input again: ");
+    }
+
+    FILE *file = fopen("config.config", "w");
+    if (file == NULL)
+    {
+        printf("[ERROR] Could not open file!\n");
+        return;
+    }
+    fprintf(file, "// Username\n%s", userName); // no \n at the end as the getline will save it.
+    fprintf(file, "// User Range\n%d\n", userRange);
+
+    fclose(file);
+
+    printf("\nConfiguration all done, you're ready to rock :)\nViel Spaß\n\n");
+}
+
+bool isConfig()
+{
+#define CONFIG_COUNT 2
+
+    FILE *file = fopen("config.config", "r");
+    if (file == NULL)
+        return false;
+
+    bool userConfig[CONFIG_COUNT] = {false};
+    int configLine = 0;
+
+    char line[BUFFER];
+    while (fgets(line, sizeof(line), file))
+    {
+        trim(line); // Remove leading/trailing whitespace
+        if (line[0] == '/' && line[1] == '/')
+            continue; // Skip comment lines
+
+        switch (configLine) // only counting uncommented lines
+        {
+        case 0:
+            strcpy(userName, line);
+            userConfig[1] = true;
+            break;
+
+        case 1:
+            userRange = atoi(line);
+            userConfig[0] = true;
+            break;
+        default:
+            break;
+        }
+        configLine++;
+    }
+    fclose(file);
+
+    for (int i = 0; i < CONFIG_COUNT; i++)
+    {
+        if (!userConfig[i])
+            return false;
+    }
+
+    return true;
+}
 
 void RecipePrint(struct Recipe r)
 {
@@ -612,8 +720,12 @@ int main()
     currentMonth = tm.tm_mon + 1;
     int dayOfWeek = tm.tm_wday; // 0=Sunday, 1=Monday, ..., 6=Saturday
 
-    printf("**** Welcome to bShell ****");
-    printf("\n\nHappy ");
+    printf("\n\n**** Welcome to bShell ****");
+
+    if (!isConfig())
+        setConfig();
+
+    printf("\n\n%s, Happy ", userName);
     switch (dayOfWeek)
     {
     case 0:
@@ -640,8 +752,8 @@ int main()
     default:
         printf("... Ops I don't know what day it is");
     }
-    printf("\nEvents coming up soon in:\n");
-    printBday(2, 7);
+    printf("\n\nEvents coming up soon in:");
+    printBday(2, userRange);
 
     while (1)
     {
