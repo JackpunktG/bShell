@@ -6,12 +6,15 @@ Creating a little shell emulator to get back onto the C train. I'm aboard!!
 
 ### Functionality
 
+Welcome page and giving a list of upcoming important event
+
 #### Recipes
 
 Keeping all your cooking recipes you come across on hand
 
 - Search
 - Add
+- Remove
 
 #### Events
 
@@ -19,13 +22,13 @@ Never miss your grandmas birthday again
 
 - Search
 - Add
+- Remove
 
 ---
 
 ### To come
 
-- edditing functionality
+- editing functionality
 - bash-like commands
 - Config & Manual Page
-- DAILY TASK!
-- Welcome page, with reminder of important dates coming up
+- Daily tasks and log!
