@@ -10,6 +10,7 @@
 
 #define BUFFER 2024
 #define MAX_INGREDIENTS 30
+#define MAX_ARGS 5
 
 time_t t;
 struct tm tm;
@@ -17,6 +18,7 @@ int currentDay;
 int currentMonth;
 int userRange;
 char userName[30];
+bool running;
 
 struct Recipe
 {
@@ -141,7 +143,7 @@ bool isConfig()
 
 void RecipePrint(struct Recipe r)
 {
-    printf("%s\n", r.name);
+    printf("\n%s\n", r.name);
     printf("Method: %s\n", r.method);
     printf("Ingredients:\n");
     for (int i = 0; i < MAX_INGREDIENTS && r.ingredients[i][0] != '\0'; i++)
@@ -195,6 +197,8 @@ void inputRecipe()
 {
     char input[100][256];
     int count = 0;
+
+    printf("Input Recipe Mode!\n You know the drill\n\n");
 
     while (count < 100 && fgets(input[count], 256, stdin))
     {
@@ -253,6 +257,8 @@ void inputRecipe()
     }
     fprintf(file, "\n");
     fclose(file);
+
+    printf("Recipe input successful!\n\n");
 }
 
 void loadRecipe(char *search)
@@ -274,7 +280,7 @@ void loadRecipe(char *search)
             recipeCount++;
     }
     rewind(file);
-    printf("%d", recipeCount);
+    // printf("%d", recipeCount);
     struct Recipe recipes[recipeCount];
     char line[BUFFER];
     int index = 0;
@@ -321,7 +327,8 @@ void loadRecipe(char *search)
     char searchName[50];
     strcpy(searchName, search);
     trim(searchName);
-    printf("\n%s\n", searchName);
+
+    // printf("\n%s\n", searchName);
 
     if (strcasecmp(searchName, "all") == 0)
     {
@@ -333,11 +340,17 @@ void loadRecipe(char *search)
     }
     else
     {
+        bool printed = false;
         for (int i = 0; i < index; i++)
         {
             if (strcasecmp(recipes[i].name, searchName) == 0)
+            {
                 RecipePrint(recipes[i]);
+                printed = true;
+            }
         }
+        if (!printed)
+            printf("Recipe not found with name %s\n", search);
     }
 }
 
@@ -346,7 +359,7 @@ void deleteRecipe(char *recipeP)
     char recipe[50];
     strcpy(recipe, recipeP);
     trim(recipe);
-    printf("\n%s ??\n\n", recipe);
+    // printf("\n%s ??\n\n", recipe);
     const char *filename = "recipes.csv";
     const char *tempname = "recipes.csv.temp";
 
@@ -575,7 +588,7 @@ void printBday(int option, int range)
         index++;
     }
     fclose(file);
-    printf("\n");
+    printf("\n\n");
 }
 
 void deleteBday(char *nameP)
@@ -712,18 +725,9 @@ bool isInWeek(int day, int month, int range)
     return false;
 }
 
-int main()
+void welcome()
 {
-    t = time(NULL);
-    tm = *localtime(&t);
-    currentDay = tm.tm_mday;
-    currentMonth = tm.tm_mon + 1;
     int dayOfWeek = tm.tm_wday; // 0=Sunday, 1=Monday, ..., 6=Saturday
-
-    printf("\n\n**** Welcome to bShell ****");
-
-    if (!isConfig())
-        setConfig();
 
     printf("\n\n%s, Happy ", userName);
     switch (dayOfWeek)
@@ -754,54 +758,147 @@ int main()
     }
     printf("\n\nEvents coming up soon in:");
     printBday(2, userRange);
+}
 
-    while (1)
+char *read_input()
+{
+    char *buffer;
+    size_t size = 0;
+    ssize_t len;
+    len = getline(&buffer, &size, stdin);
+    if (len > 0)
     {
-        printf("\nOptions:\n1 - Search Recipe\n2 - Add Recipe\n3 - Remove Recipe\n4 - Events\n5 - Add Event\n6 - Remove Event\n9 - exit\n");
-        int option;
+        if (buffer[len - 1] == '\n')
+            buffer[len - 1] = '\0';
+        return buffer;
+    }
+    else
+    {
+        printf("ERROR whilst reading input");
+        free(buffer);
+        return NULL;
+    }
+}
 
-        scanf("%d", &option);
-        getchar();
+char **process_input(char *input)
+{
 
-        if (option == 9)
-        {
-            printf("By..byeee :)\n");
-            return 0;
-        }
+    char **args = malloc(sizeof(char *) * MAX_ARGS);
+    char *token = strtok(input, " ");
+    int i = 0;
 
-        if (option == 1)
-        {
-            printf("\nWrite 'all' if you want all\nRecipe name: ");
-            char *seek = NULL;
-            size_t len = 0;
-            getline(&seek, &len, stdin);
-            loadRecipe(seek);
-        }
-        else if (option == 2)
-        {
-            inputRecipe();
-        }
-        else if (option == 3)
-        {
-            printf("\nRecipe to delete: ");
-            char *seek = NULL;
-            size_t len = 0;
-            getline(&seek, &len, stdin);
-            deleteRecipe(seek);
-        }
-        else if (option == 4)
-            printBday(1, 0);
-        else if (option == 5)
-            newBday();
-        else if (option == 6)
-        {
-            printf("\nEvent to delete: ");
-            char *seek = NULL;
-            size_t len = 0;
-            getline(&seek, &len, stdin);
-            deleteBday(seek);
-        }
+    while (token != NULL && i < MAX_ARGS)
+    {
+        trim(token);
+        args[i] = malloc(strlen(token) + 1);
+        strcpy(args[i], token);
+        i++;
+        token = strtok(NULL, " ");
     }
 
+    // Set unused args to NULL
+    for (; i < MAX_ARGS; i++)
+        args[i] = NULL;
+
+    return args;
+}
+
+void run_args(char **args)
+{
+    if (strcmp(args[0], "recipe") == 0)
+    {
+        if (strcmp(args[1], "-n") == 0)
+            inputRecipe();
+        else if (strcmp(args[1], "-d") == 0)
+            if (args[2] != NULL)
+                deleteRecipe(args[2]);
+            else
+                printf("ERROR: Args Required\n");
+        else if (strcmp(args[1], "-p") == 0)
+        {
+            if (args[2] == NULL)
+                loadRecipe("all");
+            else
+                loadRecipe(args[2]);
+        }
+
+        else
+            printf("recipe command not vaild\n");
+    }
+    else if (strcmp(args[0], "event") == 0)
+    {
+        if (strcmp(args[1], "-n") == 0)
+            newBday();
+        else if (strcmp(args[1], "-d") == 0)
+            if (args[2] != NULL)
+                deleteBday(args[2]);
+            else
+                printf("ERROR: Args Required\n");
+        else if (strcmp(args[1], "-p") == 0)
+        {
+            if (args[2] == NULL)
+                printBday(1, 0);
+            else
+            {
+                int inputRange = atoi(args[2]);
+                if (inputRange > 0)
+                    printBday(2, inputRange);
+                else
+                    printf("Error in getting Event Range\n");
+            }
+        }
+        else if (strcmp(args[1], "-pr") == 0)
+        {
+            if (args[2] == NULL)
+                printBday(1, 0);
+        }
+        else
+            printf("event command not valid\n");
+    }
+    else if (strcmp(args[0], "welcome") == 0)
+        welcome();
+    else if (strcmp(args[0], "q") == 0 || strcmp(args[0], "exit") == 0)
+        running = false;
+    else
+        printf("Invalid Command\n");
+}
+
+int main()
+{
+    t = time(NULL);
+    tm = *localtime(&t);
+    currentDay = tm.tm_mday;
+    currentMonth = tm.tm_mon + 1;
+    running = true;
+
+    printf("\n\n**** Welcome to bShell ****");
+
+    if (!isConfig())
+        setConfig();
+
+    welcome();
+
+    while (running)
+    {
+        printf("bShell> ");
+        fflush(stdout);
+        char *line = read_input();
+
+        char **args = process_input(line);
+        /*
+
+        printf("%s\n", line);
+
+                for (int i = 0; i < 5 && args[i] != NULL; i++)
+                {
+                    printf("%s\n", args[i]);
+                }
+        */
+        if (args[0] != NULL)
+            run_args(args);
+
+        free(line);
+        free(args);
+    }
     return 0;
 }
