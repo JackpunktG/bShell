@@ -8,27 +8,34 @@ Creating a little shell emulator to get back onto the C train. I'm aboard!!
 
 Welcome page and giving a list of upcoming important event
 
+#### Bash-like Commands
+
+Feel right at home!!
+
 #### Recipes
 
 Keeping all your cooking recipes you come across on hand
 
-- Search
-- Add
-- Remove
+- Command: recipe -p/-n/-d <args>
+- Print, Has args for searching for recipe or No args for all
+- Add, No args
+- Remove, Args for name of recipe to be remove
 
 #### Events
 
 Never miss your grandmas birthday again
 
-- Search
-- Add
-- Remove
+- Commands: event -p/-n/-d <args>
+- Print, Has args for searching amount of days in advance or No args for all
+- Add, No Args
+- Remove, Args for event to be removed
 
 ---
 
 ### To come
 
 - editing functionality
-- bash-like commands
-- Config & Manual Page
+- Add string capabilities for args so that looking up recipes and event with multiple words work
+- ~~bash-like commands~~
+- &&Config~~ & Manual Page
 - Daily tasks and log!
