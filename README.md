@@ -37,5 +37,5 @@ Never miss your grandmas birthday again
 - editing functionality
 - Add string capabilities for args so that looking up recipes and event with multiple words work
 - ~~bash-like commands~~
-- &&Config~~ & Manual Page
+- ~~Config~~ & Manual Page
 - Daily tasks and log!
