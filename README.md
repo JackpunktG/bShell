@@ -16,7 +16,7 @@ Feel right at home!!
 
 Keeping all your cooking recipes you come across on hand
 
-- Command: recipe -p/-n/-d <args>
+- Command: recipe -p/-n/-d args
 - Print, Has args for searching for recipe or No args for all
 - Add, No args
 - Remove, Args for name of recipe to be remove
@@ -25,7 +25,7 @@ Keeping all your cooking recipes you come across on hand
 
 Never miss your grandmas birthday again
 
-- Commands: event -p/-n/-d <args>
+- Commands: event -p/-n/-d args
 - Print, Has args for searching amount of days in advance or No args for all
 - Add, No Args
 - Remove, Args for event to be removed
