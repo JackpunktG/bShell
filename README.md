@@ -12,6 +12,12 @@ Welcome page and giving a list of upcoming important event
 
 Feel right at home!!
 
+#### Tasks
+
+Makes recording all your tasks to do a breeze.
+
+- more features inc.
+
 #### Recipes
 
 Keeping all your cooking recipes you come across on hand
