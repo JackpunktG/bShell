@@ -1,4 +1,6 @@
 *.csv
 *.exe
 *.config
-test.c
+/data
+/config
+/tests

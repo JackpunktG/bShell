@@ -16,6 +16,10 @@ time_t t;
 struct tm tm;
 int currentDay;
 int currentMonth;
+int currentHour;
+int currentMinute;
+char currentMonthSt[10];
+int currentYear;
 int userRange;
 char userName[30];
 bool running;
@@ -36,9 +40,22 @@ struct Bday
 
 bool isInWeek(int day, int month, int range);
 void trim(char *str);
+char *future_month(int month);
+int daysInMonth(int month, int year);
+void random_gen(char *out);
 
 void setConfig()
 {
+    char mkdirectory[256];
+    snprintf(mkdirectory, sizeof(mkdirectory),
+             "mkdir -p config data/recipes data/events data/task_manager/%d",
+             currentYear);
+
+    int made = system(mkdirectory);
+
+    if (made != 0)
+        printf("ERROR - directory system not made\n");
+
     printf("\n\nFirst time start up Config setting, welcome :)");
     printf("During the start up you would be greeted with the welcome screen. This will show you your upcoming event.\n\nUsername: ");
 
@@ -82,7 +99,7 @@ void setConfig()
             printf("\nTry input again: ");
     }
 
-    FILE *file = fopen("config.config", "w");
+    FILE *file = fopen("config/user.config", "w");
     if (file == NULL)
     {
         printf("[ERROR] Could not open file!\n");
@@ -100,7 +117,7 @@ bool isConfig()
 {
 #define CONFIG_COUNT 2
 
-    FILE *file = fopen("config.config", "r");
+    FILE *file = fopen("config/user.config", "r");
     if (file == NULL)
         return false;
 
@@ -139,6 +156,238 @@ bool isConfig()
     }
 
     return true;
+}
+
+void random_TaskID(char *out)
+{
+    char filename[50];
+    snprintf(filename, sizeof(filename), "data/task_manager/%d/.%dactiveIDs", currentYear, currentYear);
+
+    char id[5];
+    bool unique = false;
+
+    while (!unique)
+    {
+        random_gen(id);
+        unique = true;
+
+        FILE *file = fopen(filename, "r");
+        if (file)
+        {
+            char line[6];
+            while (fgets(line, sizeof(line), file))
+            {
+                trim(line);
+                if (strcmp(line, id) == 0)
+                {
+                    unique = false;
+                    break;
+                }
+            }
+            fclose(file);
+        }
+    }
+
+    FILE *file = fopen(filename, "a");
+    if (file)
+    {
+        fprintf(file, "%s\n", id);
+        fclose(file);
+    }
+
+    strcpy(out, id);
+}
+
+void random_gen(char *out)
+{
+    out[0] = 'A' + rand() % 26;
+    out[2] = 'A' + rand() % 26;
+    out[1] = '0' + rand() % 10;
+    out[3] = '0' + rand() % 10;
+    out[4] = '\0';
+}
+
+int *task_Date(int range)
+{
+    int *taskDate = malloc(3 * sizeof(int));
+    int year = currentYear;
+    int d = currentDay;
+    int m = currentMonth;
+    int r = range;
+
+    while (r > 0)
+    {
+        d++;
+        if (d > daysInMonth(m, year))
+        {
+            d = 1;
+            m++;
+            if (m > 12)
+            {
+                m = 1;
+                year++;
+            }
+        }
+        r--;
+    }
+    taskDate[0] = d;
+    taskDate[1] = m;
+    taskDate[2] = year;
+    return taskDate;
+}
+
+void check_TaskDirectory(int *date)
+{
+    char *monthStr = future_month(date[1]);
+    char filename[50];
+    snprintf(filename, sizeof(filename), "data/task_manager/%d/%s.txt", date[2], monthStr);
+
+    bool new = false;
+    FILE *file = fopen(filename, "a");
+    if (file == NULL)
+    {
+        char mkdirectory[128];
+        snprintf(mkdirectory, sizeof(mkdirectory),
+                 "mkdir -p data/task_manager/%d && touch data/task_manager/%d/%s.txt",
+                 date[2], date[2], monthStr);
+        system(mkdirectory);
+
+        file = fopen(filename, "a"); // re-use the same variable
+        if (file == NULL)
+        {
+            printf("ERROR creating task directory && file\n");
+            free(monthStr);
+            return;
+        }
+
+        new = true;
+    }
+    if (new)
+        fprintf(file, "// Here is the log for %s %d\n", monthStr, date[2]);
+    free(monthStr);
+    fclose(file);
+}
+
+void print_task(int r)
+{
+    int range = r;
+
+    while (range >= 0)
+    {
+        int *searchDate = task_Date(range);
+
+        char *monthStr = future_month(searchDate[1]);
+        char filename[50];
+        snprintf(filename, sizeof(filename), "data/task_manager/%d/%s.txt", searchDate[2], monthStr);
+
+        FILE *file = fopen(filename, "r");
+        if (file == NULL)
+        {
+            range--;
+            continue;
+        }
+
+        bool check = false;
+        bool printing = false;
+        char line[BUFFER];
+
+        while (fgets(line, sizeof(line), file))
+        {
+
+            trim(line);
+            if (check)
+            {
+                char *token = strtok(line, ",");
+                if (token != NULL)
+                {
+                    int day = atoi(token);
+                    // printf("%d --  day\n", day);
+                    // printf("%d -- searchDate\n", searchDate[0]);
+                    if (day <= searchDate[0])
+                    {
+                        if (!printing)
+                            printf("\n****************************\n");
+                        printing = true;
+                    }
+                }
+                check = false;
+            }
+
+            if (line[0] == '*' && line[1] == '*')
+            {
+                if (printing)
+                {
+                    printf("****************************\n");
+                    printing = false;
+                }
+                else
+                    check = true;
+            }
+
+            if (printing)
+                printf("%s\n", line);
+        }
+        fclose(file);
+
+        if (searchDate[1] == currentMonth)
+        {
+            free(searchDate);
+            free(monthStr);
+            break;
+        }
+        else
+        {
+            range = -searchDate[0];
+            free(searchDate);
+            free(monthStr);
+        }
+    }
+}
+
+void input_task(char *input)
+{
+
+    char *token = strtok(input, "|");
+    trim(token);
+    char *task = malloc(strlen(token) + 1);
+    strcpy(task, token);
+
+    token = strtok(NULL, "|");
+    trim(token);
+    int how_many_days = atoi(token);
+
+    int *taskDate = task_Date(how_many_days);
+    check_TaskDirectory(taskDate);
+
+    char *monthStr = future_month(taskDate[1]);
+    char filename[50];
+    snprintf(filename, sizeof(filename), "data/task_manager/%d/%s.txt", taskDate[2], monthStr);
+    FILE *file = fopen(filename, "a");
+
+    fprintf(file, "\n****************************\n");
+    fprintf(file, "%d,", taskDate[0]);
+
+    char id[5];
+    random_TaskID(id);
+
+    token = strtok(NULL, "|");
+    if (token != NULL)
+    {
+        trim(token);
+        char *time = malloc(strlen(token) + 1);
+        strcpy(time, token);
+        fprintf(file, " %s", time);
+        fprintf(file, "\n%s\n#APPOINTMENT\t\t%s\n", task, id);
+        free(time);
+    }
+    else
+    {
+        fprintf(file, "\n%s\n#WORKING\t\t%s\n", task, id);
+    }
+    fprintf(file, "****************************\n");
+    fclose(file);
+    free(task);
+    free(taskDate);
 }
 
 void RecipePrint(struct Recipe r)
@@ -241,7 +490,7 @@ void inputRecipe()
             new.method[i] = '.';
     }
 
-    FILE *file = fopen("recipes.csv", "a");
+    FILE *file = fopen("data/rerecipes/recipes.csv", "a");
     if (!file)
     {
         printf("Could not open file for appending!\n");
@@ -263,7 +512,7 @@ void inputRecipe()
 
 void loadRecipe(char *search)
 {
-    FILE *file = fopen("recipes.csv", "r");
+    FILE *file = fopen("data/recipes/recipes.csv", "r");
     if (file == NULL)
     {
         printf("[ERROR] Could not open file!\n");
@@ -360,10 +609,10 @@ void deleteRecipe(char *recipeP)
     strcpy(recipe, recipeP);
     trim(recipe);
     // printf("\n%s ??\n\n", recipe);
-    const char *filename = "recipes.csv";
-    const char *tempname = "recipes.csv.temp";
+    const char *filename = "data/recipes/recipes.csv";
+    const char *tempname = "data/recipes/recipes.csv.temp";
 
-    FILE *file = fopen("recipes.csv", "r");
+    FILE *file = fopen("data/recipes/recipes.csv", "r");
     if (file == NULL)
     {
         printf("[ERROR] Could not open file!\n");
@@ -532,7 +781,7 @@ void newBday()
         }
     }
 
-    FILE *file = fopen("bdays.csv", "a");
+    FILE *file = fopen("data/events/events_yearly.csv", "a");
     if (!file)
     {
         printf("Could not open file for appending!\n");
@@ -544,7 +793,7 @@ void newBday()
 
 void printBday(int option, int range)
 {
-    FILE *file = fopen("bdays.csv", "r");
+    FILE *file = fopen("data/events/events_yearly.csv", "r");
     if (!file)
     {
         printf("Could not open file for reading!\n");
@@ -597,8 +846,8 @@ void deleteBday(char *nameP)
     strcpy(name, nameP);
     trim(name);
     // printf("\n%s ??\n\n", name);
-    const char *filename = "bdays.csv";
-    const char *tempname = "bdays.csv.temp";
+    const char *filename = "data/events/events_yearly.csv";
+    const char *tempname = "data/events/events_yearly.csv.temp";
 
     FILE *file = fopen(filename, "r");
     if (!file)
@@ -784,16 +1033,42 @@ char **process_input(char *input)
 {
 
     char **args = malloc(sizeof(char *) * MAX_ARGS);
-    char *token = strtok(input, " ");
     int i = 0;
+    char *ptr = input;
 
-    while (token != NULL && i < MAX_ARGS)
+    while (*ptr && i < MAX_ARGS)
     {
-        trim(token);
-        args[i] = malloc(strlen(token) + 1);
-        strcpy(args[i], token);
+        while (isspace((unsigned char)*ptr))
+            ptr++; // skip space in between
+        if (*ptr == '"')
+        {
+            ptr++; // Skipping starting quotes
+            char *start = ptr;
+            while (*ptr && *ptr != '"')
+                ptr++;
+            size_t len = ptr - start;
+            args[i] = malloc(len + 1);
+            strncpy(args[i], start, len);
+            args[i][len] = '\0';
+            if (*ptr == '"')
+                ptr++; // Skip closing quote
+        }
+        else if (*ptr)
+        {
+            char *start = ptr;
+            while (*ptr && *ptr != ' ')
+                ptr++;
+            size_t len = ptr - start;
+            args[i] = malloc(len + 1);
+            strncpy(args[i], start, len);
+            args[i][len] = '\0';
+        }
+        else
+        {
+            printf("ERROR parsing args\n");
+            break;
+        }
         i++;
-        token = strtok(NULL, " ");
     }
 
     // Set unused args to NULL
@@ -824,6 +1099,18 @@ void run_args(char **args)
 
         else
             printf("recipe command not vaild\n");
+    }
+    else if (strcmp(args[0], "task") == 0)
+    {
+        if (strcmp(args[1], "-n") == 0)
+            input_task(args[2]);
+        else if (strcmp(args[1], "-p") == 0)
+        {
+            int range = atoi(args[2]);
+            print_task(range);
+        }
+        else
+            printf("ERROR processing task args\n");
     }
     else if (strcmp(args[0], "event") == 0)
     {
@@ -863,12 +1150,121 @@ void run_args(char **args)
         printf("Invalid Command\n");
 }
 
-int main()
+char *future_month(int month)
+{
+    char *result = malloc(10); // 9 chars for "September" + 1 for '\0'
+    if (!result)
+        return NULL;
+
+    switch (month)
+    {
+    case 1:
+        strcpy(result, "January");
+        break;
+    case 2:
+        strcpy(result, "February");
+        break;
+    case 3:
+        strcpy(result, "March");
+        break;
+    case 4:
+        strcpy(result, "April");
+        break;
+    case 5:
+        strcpy(result, "May");
+        break;
+    case 6:
+        strcpy(result, "June");
+        break;
+    case 7:
+        strcpy(result, "July");
+        break;
+    case 8:
+        strcpy(result, "August");
+        break;
+    case 9:
+        strcpy(result, "September");
+        break;
+    case 10:
+        strcpy(result, "October");
+        break;
+    case 11:
+        strcpy(result, "November");
+        break;
+    case 12:
+        strcpy(result, "December");
+        break;
+    default:
+        strcpy(result, "Unknown");
+        break;
+    }
+    return result;
+}
+
+void setMonthSt()
+{
+    switch (currentMonth)
+    {
+    case 1:
+        strcpy(currentMonthSt, "January");
+        break;
+    case 2:
+        strcpy(currentMonthSt, "February");
+        break;
+    case 3:
+        strcpy(currentMonthSt, "March");
+        break;
+    case 4:
+        strcpy(currentMonthSt, "April");
+        break;
+    case 5:
+        strcpy(currentMonthSt, "May");
+        break;
+    case 6:
+        strcpy(currentMonthSt, "June");
+        break;
+    case 7:
+        strcpy(currentMonthSt, "July");
+        break;
+    case 8:
+        strcpy(currentMonthSt, "August");
+        break;
+    case 9:
+        strcpy(currentMonthSt, "September");
+        break;
+    case 10:
+        strcpy(currentMonthSt, "October");
+        break;
+    case 11:
+        strcpy(currentMonthSt, "November");
+        break;
+    case 12:
+        strcpy(currentMonthSt, "December");
+        break;
+    default:
+        strcpy(currentMonthSt, "Unknown");
+        printf("ERROR - Month unknown!!\n");
+        break;
+    }
+}
+
+void set_time_date()
 {
     t = time(NULL);
     tm = *localtime(&t);
     currentDay = tm.tm_mday;
     currentMonth = tm.tm_mon + 1;
+    setMonthSt();
+    currentYear = tm.tm_year + 1900;
+    currentHour = tm.tm_hour;
+    currentMinute = tm.tm_min;
+}
+
+int main()
+{
+    srand(time(NULL));
+    set_time_date();
+
     running = true;
 
     printf("\n\n**** Welcome to bShell ****");
@@ -877,17 +1273,19 @@ int main()
         setConfig();
 
     welcome();
-
+    printf("Todays tasks:\n");
+    print_task(0);
+    printf("You can do it :)\n\n");
     while (running)
     {
         printf("bShell> ");
         fflush(stdout);
         char *line = read_input();
-
+        set_time_date();
         char **args = process_input(line);
-        /*
 
-        printf("%s\n", line);
+        /*
+                printf("%s\n", line);
 
                 for (int i = 0; i < 5 && args[i] != NULL; i++)
                 {
@@ -902,3 +1300,18 @@ int main()
     }
     return 0;
 }
+/*
+     bool printing = false;
+        char line[BUFFER];
+        while (fgets(line, sizeof(line), file))
+        {
+            trim(line);
+            if (line[0] == '*' && line[1] == '*')
+            {
+                if (!printing) printf("\n");
+                printf("%s\n", line);
+                if (printing) printing = false;
+                else printing = true;
+            }
+        }
+            */
