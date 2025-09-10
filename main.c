@@ -1201,6 +1201,10 @@ void welcome()
     }
     printf("\n\nEvents coming up soon in:");
     printBday(2, userRange);
+
+    printf("Todays tasks:\n");
+    print_task(0);
+    printf("You can do it :)\n\n");
 }
 
 char *read_input()
@@ -1272,9 +1276,41 @@ char **process_input(char *input)
     return args;
 }
 
+void space(int j)
+{
+    for (int i = 0; i < j; i++)
+    {
+        printf("\n");
+    }
+}
+
 void run_args(char **args)
 {
-    if (strcmp(args[0], "recipe") == 0)
+    if (strcmp(args[0], "p") == 0 || strcmp(args[0], "print") == 0)
+    {
+        if (strcmp(args[1], "t") == 0 || strcmp(args[1], "task") == 0)
+        {
+            int range = atoi(args[2]);
+            print_task(range);
+        }
+
+        else if (strcmp(args[1], "event") == 0 || strcmp(args[1], "e") == 0)
+        {
+            if (args[2] == NULL)
+                printBday(1, 0);
+            else
+            {
+                int inputRange = atoi(args[2]);
+                if (inputRange > 0)
+                    printBday(2, inputRange);
+                else
+                    printf("Error in getting Event Range\n");
+            }
+        }
+        else
+            printf("ERROR in printing args pars\n");
+    }
+    else if (strcmp(args[0], "recipe") == 0)
     {
         if (strcmp(args[1], "-n") == 0)
             inputRecipe();
@@ -1294,11 +1330,11 @@ void run_args(char **args)
         else
             printf("recipe command not vaild\n");
     }
-    else if (strcmp(args[0], "task") == 0)
+    else if (strcmp(args[0], "task") == 0 || strcmp(args[0], "t") == 0)
     {
         if (strcmp(args[1], "-n") == 0)
             input_task(args[2]);
-        else if (strcmp(args[1], "-p") == 0)
+        else if (strcmp(args[1], "-print") == 0)
         {
             int range = atoi(args[2]);
             print_task(range);
@@ -1318,7 +1354,7 @@ void run_args(char **args)
             else
                 printf("ERROR - invalid task id");
         }
-        else if (strcmp(args[1], "-s") == 0)
+        else if (strcmp(args[1], "-p") == 0)
         {
 
             for (int i = 0; args[2][i]; i++)
@@ -1365,6 +1401,16 @@ void run_args(char **args)
         }
         else
             printf("event command not valid\n");
+    }
+    else if (strcmp(args[0], "space") == 0)
+    {
+        if (args[1] == NULL)
+            space(10);
+        else
+        {
+            int n = atoi(args[1]);
+            space(n);
+        }
     }
     else if (strcmp(args[0], "welcome") == 0)
         welcome();
@@ -1497,9 +1543,7 @@ int main()
         setConfig();
 
     welcome();
-    printf("Todays tasks:\n");
-    print_task(0);
-    printf("You can do it :)\n\n");
+
     while (running)
     {
         printf("bShell> ");
