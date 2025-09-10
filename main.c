@@ -43,6 +43,7 @@ void trim(char *str);
 char *future_month(int month);
 int daysInMonth(int month, int year);
 void random_gen(char *out);
+int *task_position(char *id);
 
 void setConfig()
 {
@@ -268,6 +269,128 @@ void check_TaskDirectory(int *date)
     fclose(file);
 }
 
+void task_complete(char *id)
+{
+    int *possition = task_position(id);
+
+    if (possition[0] == 0)
+    {
+        printf("ERROR - Couldn't locate task\n");
+        free(possition);
+        return;
+    }
+    // printf("%d - %d - %d\n", possition[0], possition[1], possition[2]);
+
+    char monthSt[10];
+    char *temp = future_month(possition[0]);
+    strcpy(monthSt, temp);
+    free(temp);
+    // printf("%s\n", monthSt);
+
+    char filename[50];
+    snprintf(filename, sizeof(filename), "data/task_manager/%d/%s.txt", possition[1], monthSt);
+    FILE *file = fopen(filename, "r");
+
+    char newfilename[50];
+    snprintf(newfilename, sizeof(newfilename), "data/task_manager/%d/%s.txt.temp", possition[1], monthSt);
+    FILE *newfile = fopen(newfilename, "w");
+
+    char line[BUFFER];
+    int lineCount = 0;
+
+    while (fgets(line, sizeof(line), file))
+    {
+        if (lineCount == possition[2])
+        {
+            fprintf(newfile, "#COMPLETED\t\t%s\n", id);
+        }
+        else
+            fprintf(newfile, "%s", line);
+        lineCount++;
+    }
+
+    free(possition);
+
+    fclose(file);
+    fclose(newfile);
+    remove(filename);
+    rename(newfilename, filename);
+}
+
+int *task_position(char *id)
+{
+    // printf("%s -- ID\n", id);
+    bool taskFound = false;
+    int year = currentYear - 1;
+    int month = 1;
+    char monthSt[10];
+
+    // WANT TO MAKE IT A START UP DATE THEN A CHECK OFF EACH YEAR TO START THE YEAR FRESH
+
+    while (!taskFound)
+    {
+        char *temp = future_month(month);
+        strcpy(monthSt, temp);
+        free(temp);
+        char filename[50];
+        snprintf(filename, sizeof(filename), "data/task_manager/%d/%s.txt", year, monthSt);
+        FILE *file = fopen(filename, "r");
+
+        // printf("%s - %d\n", monthSt, year);
+
+        if (file != NULL)
+        {
+
+            int lineCount = 0;
+            char line[BUFFER];
+
+            while (fgets(line, sizeof(line), file))
+            {
+                // printf("in file here\n");
+
+                if (line[0] == '#')
+                {
+                    char *token = strtok(line, " \t"); // "#WORKING"
+                    // printf("%s - Token 2\n", token);
+                    token = strtok(NULL, " \t"); // "G2M5" (may be NULL if no second token)
+                    // printf("%s - Token 1\n", token);
+                    if (token)
+                    {
+                        trim(token);
+                        // printf("%s\n", token);
+                        if (strcmp(token, id) == 0)
+                        {
+                            int *position = malloc(3 * sizeof(int));
+                            position[0] = month;
+                            position[1] = year;
+                            position[2] = lineCount;
+                            fclose(file);
+                            return position;
+                        }
+                    }
+                }
+                lineCount++;
+            }
+            fclose(file);
+        }
+        month++;
+
+        if (month > 12)
+        {
+            month = 1;
+            year++;
+        }
+
+        if (year > currentYear + 2)
+        {
+            int *position = malloc(1 * sizeof(int));
+            position[0] = 0;
+
+            return position;
+        }
+    }
+}
+
 void print_task(int r)
 {
     int range = r;
@@ -390,6 +513,7 @@ void input_task(char *input)
     }
     fprintf(file, "****************************\n");
     fclose(file);
+
     free(task);
     free(taskDate);
 }
@@ -1112,6 +1236,21 @@ void run_args(char **args)
         {
             int range = atoi(args[2]);
             print_task(range);
+        }
+        else if (strcmp(args[1], "-c") == 0)
+        {
+
+            for (int i = 0; args[2][i]; i++)
+            {
+                args[2][i] = toupper((unsigned char)args[2][i]);
+            }
+            if (isalpha(args[2][0]) && isdigit(args[2][1]) &&
+                isalpha(args[2][2]) && isdigit(args[2][3]))
+            {
+                task_complete(args[2]);
+            }
+            else
+                printf("ERROR - invalid task id");
         }
         else
             printf("ERROR processing task args\n");
