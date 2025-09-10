@@ -297,12 +297,14 @@ void print_task(int r)
             trim(line);
             if (check)
             {
-                char *token = strtok(line, ",");
-                if (token != NULL)
+                char *comma = strchr(line, ',');
+                if (comma)
                 {
-                    int day = atoi(token);
-                    // printf("%d --  day\n", day);
-                    // printf("%d -- searchDate\n", searchDate[0]);
+                    char day_str[10];
+                    size_t len = comma - line;
+                    strncpy(day_str, line, len);
+                    day_str[len] = '\0';
+                    int day = atoi(day_str);
                     if (day <= searchDate[0])
                     {
                         if (!printing)
@@ -325,7 +327,9 @@ void print_task(int r)
             }
 
             if (printing)
+            {
                 printf("%s\n", line);
+            }
         }
         fclose(file);
 
