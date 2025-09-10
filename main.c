@@ -269,6 +269,72 @@ void check_TaskDirectory(int *date)
     fclose(file);
 }
 
+void task_postpone(char *id, int r)
+{
+    int *possition = task_position(id);
+
+    if (possition[0] == 0)
+    {
+        printf("ERROR - Couldn't locate task\n");
+        free(possition);
+        return;
+    }
+    // printf("%d - %d - %d\n", possition[0], possition[1], possition[2]);
+
+    char monthSt[10];
+    char *temp = future_month(possition[0]);
+    strcpy(monthSt, temp);
+    free(temp);
+    // printf("%s\n", monthSt);
+
+    char filename[50];
+    snprintf(filename, sizeof(filename), "data/task_manager/%d/%s.txt", possition[1], monthSt);
+    FILE *file = fopen(filename, "r");
+
+    char newfilename[50];
+    snprintf(newfilename, sizeof(newfilename), "data/task_manager/%d/%s.txt.temp", possition[1], monthSt);
+    FILE *newfile = fopen(newfilename, "w");
+
+    char line[BUFFER];
+    int lineCount = 0;
+
+    while (fgets(line, sizeof(line), file))
+    {
+        if (lineCount == possition[2] - 2)
+        {
+            char *token = strtok(line, ",");
+            trim(token);
+            int actuellDate = atoi(token);
+
+            int *taskDate = task_Date(actuellDate - currentDay + r);
+
+            token = strtok(NULL, ",");
+
+            // printf("%d - actuellDate\n%d -- task date\n%d -- current day\n", actuellDate, taskDate[0], currentDay);
+            if (taskDate[1] == possition[0])
+            {
+                fprintf(newfile, "%d,%s", taskDate[0], token);
+            }
+            else
+            {
+                // ## need alternate code for putting it into a other document and deleting here
+            }
+
+            free(taskDate);
+        }
+        else
+            fprintf(newfile, "%s", line);
+        lineCount++;
+    }
+
+    free(possition);
+
+    fclose(file);
+    fclose(newfile);
+    remove(filename);
+    rename(newfilename, filename);
+}
+
 void task_complete(char *id)
 {
     int *possition = task_position(id);
@@ -1251,6 +1317,21 @@ void run_args(char **args)
             }
             else
                 printf("ERROR - invalid task id");
+        }
+        else if (strcmp(args[1], "-s") == 0)
+        {
+
+            for (int i = 0; args[2][i]; i++)
+            {
+                args[2][i] = toupper((unsigned char)args[2][i]);
+            }
+            if (isalpha(args[2][0]) && isdigit(args[2][1]) &&
+                isalpha(args[2][2]) && isdigit(args[2][3]))
+            {
+
+                int r = atoi(args[3]);
+                task_postpone(args[2], r);
+            }
         }
         else
             printf("ERROR processing task args\n");
