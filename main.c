@@ -457,13 +457,15 @@ int *task_position(char *id)
     }
 }
 
-void print_task(int r)
+void print_task(int r, char mode)
 {
     int range = r;
 
     while (range >= 0)
     {
+        // printf("%d\n", range);
         int *searchDate = task_Date(range);
+        // rpintf("%d - %d - %d\n", searchDate[0], searchDate[1], searchDate[2]);
 
         char *monthStr = future_month(searchDate[1]);
         char filename[50];
@@ -472,6 +474,13 @@ void print_task(int r)
         FILE *file = fopen(filename, "r");
         if (file == NULL)
         {
+            if (mode == 'e')
+            {
+                printf("No Tasks found for %d.%d.%d\n", searchDate[0], searchDate[1], searchDate[2]);
+                free(searchDate);
+                free(monthStr);
+                return;
+            }
             range--;
             continue;
         }
@@ -479,6 +488,7 @@ void print_task(int r)
         bool check = false;
         bool printing = false;
         char line[BUFFER];
+        bool taskfound = false;
 
         while (fgets(line, sizeof(line), file))
         {
@@ -494,11 +504,40 @@ void print_task(int r)
                     strncpy(day_str, line, len);
                     day_str[len] = '\0';
                     int day = atoi(day_str);
-                    if (day <= searchDate[0])
+                    switch (mode)
                     {
-                        if (!printing)
-                            printf("\n****************************\n");
-                        printing = true;
+                    case 'e':
+                        if (day == searchDate[0])
+                        {
+                            if (!taskfound)
+                                printf("Tasks found for %d.%d.%d\n", searchDate[0], searchDate[1], searchDate[2]);
+                            if (!printing)
+                                printf("\n****************************\n");
+                            printing = true;
+                            taskfound = true;
+                        }
+                        break;
+                    case 'h':
+                        if (currentMonth != searchDate[1])
+                        {
+                            if (!taskfound)
+                                printf("Tasks found %s %d - ≤%d\n", monthStr, searchDate[2], searchDate[0]);
+                            if (!printing)
+                                printf("\n****************************\n");
+                            printing = true;
+                            taskfound = true;
+                        }
+                        else if (day >= currentDay && day <= searchDate[0])
+                        {
+                            if (!taskfound)
+                                printf("Tasks found for %s %d - ≤%d\n", monthStr, searchDate[2], searchDate[0]);
+                            if (!printing)
+                                printf("\n****************************\n");
+                            printing = true;
+                            taskfound = true;
+                        }
+
+                        break;
                     }
                 }
                 check = false;
@@ -522,15 +561,19 @@ void print_task(int r)
         }
         fclose(file);
 
-        if (searchDate[1] == currentMonth)
+        if ((searchDate[1] == currentMonth) || mode == 'e')
         {
+            if (!taskfound)
+                printf("No tasks found for %d.%d.%d\n", searchDate[0], searchDate[1], searchDate[2]);
             free(searchDate);
             free(monthStr);
-            break;
+            return;
         }
         else
         {
-            range = -searchDate[0];
+            if (!taskfound)
+                printf("No tasks found for %s %d - ≤%d\n", monthStr, searchDate[2], searchDate[0]);
+            range -= searchDate[0];
             free(searchDate);
             free(monthStr);
         }
@@ -1203,7 +1246,7 @@ void welcome()
     printBday(2, userRange);
 
     printf("Todays tasks:\n");
-    print_task(0);
+    print_task(0, 'e');
     printf("You can do it :)\n\n");
 }
 
@@ -1291,9 +1334,13 @@ void run_args(char **args)
         if (strcmp(args[1], "t") == 0 || strcmp(args[1], "task") == 0)
         {
             int range = atoi(args[2]);
-            print_task(range);
+            print_task(range, 'h');
         }
-
+        else if (strcmp(args[1], "t!") == 0 || strcmp(args[1], "task!") == 0)
+        {
+            int range = atoi(args[2]);
+            print_task(range, 'e');
+        }
         else if (strcmp(args[1], "event") == 0 || strcmp(args[1], "e") == 0)
         {
             if (args[2] == NULL)
@@ -1337,7 +1384,12 @@ void run_args(char **args)
         else if (strcmp(args[1], "-print") == 0)
         {
             int range = atoi(args[2]);
-            print_task(range);
+            print_task(range, 'h');
+        }
+        else if (strcmp(args[1], "-print!") == 0)
+        {
+            int range = atoi(args[2]);
+            print_task(range, 'e');
         }
         else if (strcmp(args[1], "-c") == 0)
         {
